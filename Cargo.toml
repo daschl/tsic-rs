@@ -1,0 +1,14 @@
+[package]
+name = "tsic"
+version = "0.1.0" # remember to update html_root_url
+authors = ["Michael Nitschinger <michael@nitschinger.at>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Platform-agnostic access to TSIC sensors via embedded-hal"
+repository = "https://github.com/daschl/tsic-rs"
+readme = "README.md"
+categories  = ["embedded", "hardware-support", "no-std"]
+keywords = ["embedded-hal-driver", "tsic", "sensor", "temperature"]
+
+[dependencies]
+embedded-hal = { version = "0.2", features = ["unproven"] }
