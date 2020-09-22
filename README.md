@@ -23,8 +23,6 @@ In order to run this driver, your actual board needs to provide implementation f
 - [DelayUs]
 - [InputPin]
 
-The example folder contains examples using the nrf52840 DK utilizing the [nrf-hal].
-
 ## Code of Conduct
 
 We abide by the [Contributor Covenant][cc] and ask that you do as well.
