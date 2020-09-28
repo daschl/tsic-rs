@@ -6,6 +6,14 @@
 
 This crate provides a platform-agnostic driver for the TSIC temperature sensors using on top of the [embedded-hal] traits.
 
+## Usage
+
+Add this to your dependencies:
+
+```toml
+tsic = "0.1"
+```
+
 ## Tested Sensors
 
 While more sensors should work, right now I only have acces (and therefore tested):

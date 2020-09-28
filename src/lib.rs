@@ -25,7 +25,7 @@
 
 #![forbid(unsafe_code)]
 #![no_std]
-#![doc(html_root_url = "https://docs.rs/tsic/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/tsic/0.2.0")]
 #![warn(missing_docs, rust_2018_idioms, unused_qualifications)]
 
 use core::time::Duration;
