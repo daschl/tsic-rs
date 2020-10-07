@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+ - Added `SensorType` so that we leave the door open to more sensor support in the future.
+
 ### Changed
 
  - Renamed `TsicReadError` to `TsicError` to make it more generic.

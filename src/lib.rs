@@ -11,9 +11,9 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use tsic::Tsic;
+//! use tsic::{SensorType, Tsic};
 //!
-//! let sensor = Tsic::new(/* your hal pin */);
+//! let sensor = Tsic::new(SensorType::Tsic306, /* your hal pin */);
 //!
 //! let mut delay = /* your hal delay */();
 //!
@@ -39,13 +39,19 @@ static STROBE_SAMPLING_RATE: Duration = Duration::from_micros(8);
 /// The `Tsic` struct is the main entry point when trying to get a temperature reading from a
 /// TSIC 306 sensor.
 pub struct Tsic<I: InputPin> {
+    /// Right now the sensor type is unused since we only support one, but it provides a forward
+    /// compatible API in case we add support for more in the future.
+    _sensor_type: SensorType,
     pin: I,
 }
 
 impl<I: InputPin> Tsic<I> {
     /// Creates a new `Tsic` sensor wrapper and binds it to the input pin given.
-    pub fn new(pin: I) -> Self {
-        Self { pin }
+    pub fn new(sensor_type: SensorType, pin: I) -> Self {
+        Self {
+            _sensor_type: sensor_type,
+            pin,
+        }
     }
 
     /// Attempts to read from the sensor, might fail (see errors for details if so).
@@ -201,4 +207,14 @@ impl Packet {
     fn has_even_parity(raw: u16) -> bool {
         raw.count_ones() % 2 == 0
     }
+}
+
+/// Refers to the sensor type that is used.
+///
+/// Note that it does not matter if you use the SOP-8 or the TO92 style
+/// sensors as long as the type is correct and the pins are correctly
+/// assigned. See the data sheet for more information.
+pub enum SensorType {
+    /// Use this variant if you use the TSic 306 sensor.
+    Tsic306,
 }
