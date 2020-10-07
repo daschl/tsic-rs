@@ -53,7 +53,7 @@ impl<I: InputPin> Tsic<I> {
     /// Note that the passed in `Delay` from the HAL needs to be aquired outside of
     /// this struct and passed in as mutable, because to aquire correct data from the
     /// sensor the code needs to pause for a certain amount of microseconds.
-    pub fn read<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Temperature, TsicReadError> {
+    pub fn read<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Temperature, TsicError> {
         let first_packet = self.read_packet(delay)?;
         let second_packet = self.read_packet(delay)?;
         Ok(Temperature::new(first_packet, second_packet))
@@ -78,7 +78,7 @@ impl<I: InputPin> Tsic<I> {
     ///
     /// See https://www.ist-ag.com/sites/default/files/ATTSic_E.pdf for
     /// the full document.
-    fn read_packet<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Packet, TsicReadError> {
+    fn read_packet<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Packet, TsicError> {
         self.wait_until_low()?;
 
         let strobe_len = self.strobe_len(delay)?.as_micros() as u8;
@@ -108,7 +108,7 @@ impl<I: InputPin> Tsic<I> {
     /// read attempt.
     ///
     /// The strobe length should be around 60 microseconds.
-    fn strobe_len<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Duration, TsicReadError> {
+    fn strobe_len<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Duration, TsicError> {
         let sampling_rate = STROBE_SAMPLING_RATE.as_micros();
 
         let mut strobe_len = 0;
@@ -121,23 +121,23 @@ impl<I: InputPin> Tsic<I> {
     }
 
     /// Checks if the pin is currently in a high state.
-    fn is_high(&self) -> Result<bool, TsicReadError> {
-        self.pin.is_high().map_err(|_| TsicReadError::PinReadError)
+    fn is_high(&self) -> Result<bool, TsicError> {
+        self.pin.is_high().map_err(|_| TsicError::PinReadError)
     }
 
     /// Checks if the pin is currently in a low state.
-    fn is_low(&self) -> Result<bool, TsicReadError> {
-        self.pin.is_low().map_err(|_| TsicReadError::PinReadError)
+    fn is_low(&self) -> Result<bool, TsicError> {
+        self.pin.is_low().map_err(|_| TsicError::PinReadError)
     }
 
     /// Returns only once the pin is in a low state.
-    fn wait_until_low(&self) -> Result<(), TsicReadError> {
+    fn wait_until_low(&self) -> Result<(), TsicError> {
         while self.is_high()? {}
         Ok(())
     }
 
     /// Returns only once the pin is in a high state.
-    fn wait_until_high(&self) -> Result<(), TsicReadError> {
+    fn wait_until_high(&self) -> Result<(), TsicError> {
         while self.is_low()? {}
         Ok(())
     }
@@ -145,7 +145,7 @@ impl<I: InputPin> Tsic<I> {
 
 /// Contains all errors that can happen during a reading from the sensor.
 #[derive(Debug)]
-pub enum TsicReadError {
+pub enum TsicError {
     /// The parity check for one of the packets failed.
     ///
     /// This might be a temporary issue, so attempting to perform another
@@ -183,12 +183,12 @@ impl Packet {
     /// Creates a new `Packet` from the raw measured bits.
     ///
     /// Note that this method performs a parity check on the input data and if
-    /// that fails returns a `TsicReadError::ParityCheckFailed`.
-    fn new(raw_bits: u16) -> Result<Self, TsicReadError> {
+    /// that fails returns a `TsicError::ParityCheckFailed`.
+    fn new(raw_bits: u16) -> Result<Self, TsicError> {
         if Self::has_even_parity(raw_bits) {
             Ok(Self { raw_bits })
         } else {
-            Err(TsicReadError::ParityCheckFailed)
+            Err(TsicError::ParityCheckFailed)
         }
     }
 
