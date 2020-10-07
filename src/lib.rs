@@ -22,9 +22,8 @@
 //!   Err(e) => defmt::warn!("Getting sensor data failed: {:?}", e),
 //! };
 //! ```
-
+#![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
-#![no_std]
 #![doc(html_root_url = "https://docs.rs/tsic/0.2.0")]
 #![warn(missing_docs, rust_2018_idioms, unused_qualifications)]
 
@@ -62,6 +61,7 @@ impl<I: InputPin> Tsic<I> {
     pub fn read<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Temperature, TsicError> {
         let first_packet = self.read_packet(delay)?;
         let second_packet = self.read_packet(delay)?;
+
         Ok(Temperature::new(first_packet, second_packet))
     }
 
@@ -170,8 +170,9 @@ pub struct Temperature {
 impl Temperature {
     /// Create a full temperature reading from the two individual half reading packets.
     fn new(first: Packet, second: Packet) -> Self {
-        let raw = ((first.value() as u16) << 8) | second.value() as u16;
-        Self { raw }
+        Self {
+            raw: (first.value() << 8) | second.value(),
+        }
     }
 
     /// Returns the temperature in degree celsius.
