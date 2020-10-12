@@ -53,18 +53,23 @@ use embedded_hal::digital::v2::{InputPin, OutputPin};
 
 /// The spec defines the sample rate as 128kHz, which is 7.8 microseconds. Since
 /// we can only sleep for a round number of micros, 8 micros should be close enough.
-static STROBE_SAMPLING_RATE: Duration = Duration::from_micros(8);
+const STROBE_SAMPLING_RATE: Duration = Duration::from_micros(8);
 
 /// After power up, an initial power up stabilization delay is needed to
 /// get reliable measurements.
-static VDD_POWER_UP_DELAY: Duration = Duration::from_micros(50);
+const VDD_POWER_UP_DELAY: Duration = Duration::from_micros(50);
+
+/// This is the raw high value at 150°C that according to the docs the sensor
+/// outputs as a raw value. Everything at this value and be low that is fine,
+/// the rest is going to be errored.
+const TSIC_306_RAW_HIGH_TEMP: u16 = 0x7FF;
 
 /// The `Tsic` struct is the main entry point when trying to get a temperature reading from a
 /// TSIC 306 sensor.
 pub struct Tsic<I: InputPin, O: OutputPin> {
     /// Right now the sensor type is unused since we only support one, but it provides a forward
     /// compatible API in case we add support for more in the future.
-    _sensor_type: SensorType,
+    sensor_type: SensorType,
     signal_pin: I,
     vdd_pin: Option<O>,
 }
@@ -85,7 +90,7 @@ impl<I: InputPin> Tsic<I, DummyOutputPin> {
     /// the `read` operation.
     pub fn without_vdd_control(sensor_type: SensorType, signal_pin: I) -> Self {
         Self {
-            _sensor_type: sensor_type,
+            sensor_type,
             signal_pin,
             vdd_pin: None,
         }
@@ -109,7 +114,7 @@ impl<I: InputPin, O: OutputPin> Tsic<I, O> {
     /// or if you have the sensor on permanent power.
     pub fn with_vdd_control(sensor_type: SensorType, signal_pin: I, vdd_pin: O) -> Self {
         Self {
-            _sensor_type: sensor_type,
+            sensor_type,
             signal_pin,
             vdd_pin: Some(vdd_pin),
         }
@@ -145,7 +150,7 @@ impl<I: InputPin, O: OutputPin> Tsic<I, O> {
 
         self.maybe_power_down_sensor()?;
 
-        Ok(Temperature::new(first_packet, second_packet))
+        Temperature::new(first_packet, second_packet, &self.sensor_type)
     }
 
     /// Handle VDD pin power up if set during construction.
@@ -273,6 +278,15 @@ pub enum TsicError {
 
     /// Failed to set the high/low state of the vdd pin.
     PinWriteError,
+
+    /// The temperature reading is out of range.
+    ///
+    /// Note that it includes the raw value (not in celsius!) for
+    /// debugging purposes.
+    TemperatureOutOfRange {
+        /// The (wrong) raw measured temperature.
+        measured: u16,
+    },
 }
 
 /// Represents a single temperature reading from the TSIC 306 sensor.
@@ -282,9 +296,12 @@ pub struct Temperature {
 
 impl Temperature {
     /// Create a full temperature reading from the two individual half reading packets.
-    fn new(first: Packet, second: Packet) -> Self {
-        Self {
-            raw: (first.value() << 8) | second.value(),
+    fn new(first: Packet, second: Packet, sensor_type: &SensorType) -> Result<Self, TsicError> {
+        let raw = (first.value() << 8) | second.value();
+        if sensor_type.raw_temperature_in_range(raw) {
+            Ok(Self { raw })
+        } else {
+            Err(TsicError::TemperatureOutOfRange { measured: raw })
         }
     }
 
@@ -333,6 +350,17 @@ pub enum SensorType {
     Tsic306,
 }
 
+impl SensorType {
+    /// Checks if for the given sensor type the raw temperature
+    /// measurement is in the allowed range.
+    fn raw_temperature_in_range(&self, input: u16) -> bool {
+        match self {
+            Self::Tsic306 if input <= TSIC_306_RAW_HIGH_TEMP => true,
+            _ => false,
+        }
+    }
+}
+
 /// This `OutputPin` is used to satisfy the generics when no explicit pin is provided.
 ///
 /// Note that you do not want to use this struct, I just couldn' figure out a much
@@ -348,5 +376,45 @@ impl OutputPin for DummyOutputPin {
 
     fn set_high(&mut self) -> Result<(), Self::Error> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_temp_conversion_for_306() {
+        let sensor_type = SensorType::Tsic306;
+
+        let input = 0x465u16.to_be_bytes(); // this is 60°c per spec
+        let high_with_parity = ((input[0] as u16) << 1) | 1;
+        let low_with_parity = ((input[1] as u16) << 1) | 0;
+
+        let packet1 = Packet::new(high_with_parity).unwrap();
+        let packet2 = Packet::new(low_with_parity).unwrap();
+
+        let result = Temperature::new(packet1, packet2, &sensor_type);
+        assert_eq!(60, result.unwrap().as_celsius().round() as u32);
+    }
+
+    #[test]
+    fn test_error_over_temp_boundary_306() {
+        let sensor_type = SensorType::Tsic306;
+
+        let input = (TSIC_306_RAW_HIGH_TEMP + 1).to_be_bytes();
+        let high_with_parity = ((input[0] as u16) << 1) | 1;
+        let low_with_parity = ((input[1] as u16) << 1) | 0;
+
+        let packet1 = Packet::new(high_with_parity).unwrap();
+        let packet2 = Packet::new(low_with_parity).unwrap();
+
+        let result = Temperature::new(packet1, packet2, &sensor_type);
+
+        match result {
+            Err(TsicError::TemperatureOutOfRange { measured: 0x800 }) => assert!(true),
+            _ => assert!(false),
+        }
     }
 }

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+ - Added `TemperatureOutOfRange` error and perform range check on TSIC 306.
+
 ### Changed
 
  - Reduce the initial VDD delay down to `50µs`, because at higher temperatures it looks
