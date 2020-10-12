@@ -16,11 +16,16 @@ tsic = "0.2"
 
 ## Tested Sensors
 
-While more sensors should work, right now I only have acces (and therefore tested):
+While more sensors should work, right now I only have access (and therefore tested):
 
 - TSIC 306
 
-The 206 should also work I think. Note that this driver right now only has support for the digital protocol (ZACWire), so the analog sensors are not supported (201, 301, 203, 303).
+I also added experimental support for the following sensors, but note that I do not have access to them so it might not be working (I worked off of the official spec):
+
+- TSIC 206
+- TSIC 316
+
+Note that this driver right now only has support for the digital protocol (ZACWire), so the analog sensors are not supported (201, 301, 203, 303).
 
 [Documentation][docs-link]
 

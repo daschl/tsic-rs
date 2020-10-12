@@ -62,7 +62,7 @@ const VDD_POWER_UP_DELAY: Duration = Duration::from_micros(50);
 /// This is the raw high value at 150°C that according to the docs the sensor
 /// outputs as a raw value. Everything at this value and be low that is fine,
 /// the rest is going to be errored.
-const TSIC_306_RAW_HIGH_TEMP: u16 = 0x7FF;
+const TSIC_206_306_316_RAW_HIGH_TEMP: u16 = 0x7FF;
 
 /// The `Tsic` struct is the main entry point when trying to get a temperature reading from a
 /// TSIC 306 sensor.
@@ -291,7 +291,7 @@ pub enum TsicError {
 
 /// Represents a single temperature reading from the TSIC 306 sensor.
 pub struct Temperature {
-    raw: u16,
+    celsius: f32,
 }
 
 impl Temperature {
@@ -299,7 +299,9 @@ impl Temperature {
     fn new(first: Packet, second: Packet, sensor_type: &SensorType) -> Result<Self, TsicError> {
         let raw = (first.value() << 8) | second.value();
         if sensor_type.raw_temperature_in_range(raw) {
-            Ok(Self { raw })
+            Ok(Self {
+                celsius: sensor_type.raw_to_celsius(raw),
+            })
         } else {
             Err(TsicError::TemperatureOutOfRange { measured: raw })
         }
@@ -307,7 +309,7 @@ impl Temperature {
 
     /// Returns the temperature in degree celsius.
     pub fn as_celsius(&self) -> f32 {
-        (self.raw as f32 * 200.0 / 2047.0) - 50.0
+        self.celsius
     }
 }
 
@@ -348,6 +350,16 @@ impl Packet {
 pub enum SensorType {
     /// Use this variant if you use the TSic 306 sensor.
     Tsic306,
+    /// Use this variant if you use the TSic 206 sensor.
+    ///
+    /// Note: this type is currently experimental since I do not have a
+    /// sensor to test it.
+    Tsic206,
+    /// Use this variant if you use the TSic 316 sensor.
+    ///
+    /// Note: this type is currently experimental since I do not have a
+    /// sensor to test it.
+    Tsic316,
 }
 
 impl SensorType {
@@ -355,8 +367,17 @@ impl SensorType {
     /// measurement is in the allowed range.
     fn raw_temperature_in_range(&self, input: u16) -> bool {
         match self {
-            Self::Tsic306 if input <= TSIC_306_RAW_HIGH_TEMP => true,
+            Self::Tsic306 | Self::Tsic206 if input <= TSIC_206_306_316_RAW_HIGH_TEMP => true,
+            Self::Tsic316 if input <= TSIC_206_306_316_RAW_HIGH_TEMP => true,
             _ => false,
+        }
+    }
+
+    // Calculate the celsius temperature from the raw value.
+    fn raw_to_celsius(&self, input: u16) -> f32 {
+        match self {
+            Self::Tsic306 | Self::Tsic206 => (input as f32 * 200.0 / 2047.0) - 50.0,
+            Self::Tsic316 => (input as f32 * 200.0 / 16383.0) - 50.0,
         }
     }
 }
@@ -403,7 +424,7 @@ mod tests {
     fn test_error_over_temp_boundary_306() {
         let sensor_type = SensorType::Tsic306;
 
-        let input = (TSIC_306_RAW_HIGH_TEMP + 1).to_be_bytes();
+        let input = (TSIC_206_306_316_RAW_HIGH_TEMP + 1).to_be_bytes();
         let high_with_parity = ((input[0] as u16) << 1) | 1;
         let low_with_parity = ((input[1] as u16) << 1) | 0;
 
