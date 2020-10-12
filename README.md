@@ -11,7 +11,7 @@ This crate provides a platform-agnostic driver for the TSIC temperature sensors 
 Add this to your dependencies:
 
 ```toml
-tsic = "0.1"
+tsic = "0.2"
 ```
 
 ## Tested Sensors
