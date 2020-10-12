@@ -59,10 +59,8 @@ const STROBE_SAMPLING_RATE: Duration = Duration::from_micros(8);
 /// get reliable measurements.
 const VDD_POWER_UP_DELAY: Duration = Duration::from_micros(50);
 
-/// This is the raw high value at 150°C that according to the docs the sensor
-/// outputs as a raw value. Everything at this value and be low that is fine,
-/// the rest is going to be errored.
-const TSIC_206_306_316_RAW_HIGH_TEMP: u16 = 0x7FF;
+/// The raw packet high temp value, depending on the sensor used.
+const TSIC_RAW_HIGH: u16 = 0x7FF;
 
 /// The `Tsic` struct is the main entry point when trying to get a temperature reading from a
 /// TSIC 306 sensor.
@@ -348,36 +346,44 @@ impl Packet {
 /// sensors as long as the type is correct and the pins are correctly
 /// assigned. See the data sheet for more information.
 pub enum SensorType {
-    /// Use this variant if you use the TSic 306 sensor.
-    Tsic306,
     /// Use this variant if you use the TSic 206 sensor.
     ///
     /// Note: this type is currently experimental since I do not have a
     /// sensor to test it.
     Tsic206,
+    /// Use this variant if you use the TSic 306 sensor.
+    Tsic306,
     /// Use this variant if you use the TSic 316 sensor.
     ///
     /// Note: this type is currently experimental since I do not have a
     /// sensor to test it.
     Tsic316,
+    /// Use this variant if you use the TSic 506 sensor.
+    ///
+    /// Note: this type is currently experimental since I do not have a
+    /// sensor to test it.
+    Tsic506,
+    /// Use this variant if you use the TSic 516 sensor.
+    ///
+    /// Note: this type is currently experimental since I do not have a
+    /// sensor to test it.
+    Tsic516,
 }
 
 impl SensorType {
     /// Checks if for the given sensor type the raw temperature
     /// measurement is in the allowed range.
     fn raw_temperature_in_range(&self, input: u16) -> bool {
-        match self {
-            Self::Tsic306 | Self::Tsic206 if input <= TSIC_206_306_316_RAW_HIGH_TEMP => true,
-            Self::Tsic316 if input <= TSIC_206_306_316_RAW_HIGH_TEMP => true,
-            _ => false,
-        }
+        input <= TSIC_RAW_HIGH
     }
 
     // Calculate the celsius temperature from the raw value.
     fn raw_to_celsius(&self, input: u16) -> f32 {
         match self {
-            Self::Tsic306 | Self::Tsic206 => (input as f32 * 200.0 / 2047.0) - 50.0,
-            Self::Tsic316 => (input as f32 * 200.0 / 16383.0) - 50.0,
+            Self::Tsic306 | Self::Tsic206 => input as f32 * 200.0 / 2047.0 - 50.0,
+            Self::Tsic316 => input as f32 * 200.0 / 16383.0 - 50.0,
+            Self::Tsic506 => input as f32 * 50.0 / 2047.0 - 10.0,
+            Self::Tsic516 => input as f32 * 50.0 / 16383.0 - 10.0,
         }
     }
 }
@@ -386,7 +392,7 @@ impl SensorType {
 ///
 /// Note that you do not want to use this struct, I just couldn' figure out a much
 /// better way right now, but hopefully it will go away at some point.
-pub struct DummyOutputPin {}
+pub struct DummyOutputPin;
 
 impl OutputPin for DummyOutputPin {
     type Error = ();
@@ -424,7 +430,7 @@ mod tests {
     fn test_error_over_temp_boundary_306() {
         let sensor_type = SensorType::Tsic306;
 
-        let input = (TSIC_206_306_316_RAW_HIGH_TEMP + 1).to_be_bytes();
+        let input = (TSIC_RAW_HIGH + 1).to_be_bytes();
         let high_with_parity = ((input[0] as u16) << 1) | 1;
         let low_with_parity = ((input[1] as u16) << 1) | 0;
 
