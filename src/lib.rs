@@ -55,9 +55,9 @@ use embedded_hal::digital::v2::{InputPin, OutputPin};
 /// we can only sleep for a round number of micros, 8 micros should be close enough.
 static STROBE_SAMPLING_RATE: Duration = Duration::from_micros(8);
 
-/// The spec says that after power up, the sensor will transmit the first reading after
-/// 65-85ms. Let's play it safe and wait 50 millis after powering up.
-static VDD_POWER_UP_DELAY: Duration = Duration::from_millis(50);
+/// After power up, an initial power up stabilization delay is needed to
+/// get reliable measurements.
+static VDD_POWER_UP_DELAY: Duration = Duration::from_micros(50);
 
 /// The `Tsic` struct is the main entry point when trying to get a temperature reading from a
 /// TSIC 306 sensor.
@@ -124,7 +124,7 @@ impl<I: InputPin, O: OutputPin> Tsic<I, O> {
     /// In case there is an error during the read phase and if the `Tsic` has been constructed
     /// to manage the VDD pin as well, it will try to shut it down in a best-effort manner as
     /// well.
-    pub fn read<D: DelayUs<u16>>(&mut self, delay: &mut D) -> Result<Temperature, TsicError> {
+    pub fn read<D: DelayUs<u8>>(&mut self, delay: &mut D) -> Result<Temperature, TsicError> {
         self.maybe_power_up_sensor(delay)?;
 
         let first_packet = match self.read_packet(delay) {
@@ -152,10 +152,10 @@ impl<I: InputPin, O: OutputPin> Tsic<I, O> {
     ///
     /// If we are managing the VDD pin for the user, we need to power up the sensor and then
     /// apply an initial delay before the reading can continue.
-    fn maybe_power_up_sensor<D: DelayUs<u16>>(&mut self, delay: &mut D) -> Result<(), TsicError> {
+    fn maybe_power_up_sensor<D: DelayUs<u8>>(&mut self, delay: &mut D) -> Result<(), TsicError> {
         if let Some(ref mut pin) = self.vdd_pin {
             pin.set_high().map_err(|_| TsicError::PinWriteError)?;
-            delay.delay_us(VDD_POWER_UP_DELAY.as_micros() as u16);
+            delay.delay_us(VDD_POWER_UP_DELAY.as_micros() as u8);
         }
         Ok(())
     }
@@ -190,10 +190,10 @@ impl<I: InputPin, O: OutputPin> Tsic<I, O> {
     ///
     /// See https://www.ist-ag.com/sites/default/files/ATTSic_E.pdf for
     /// the full document.
-    fn read_packet<D: DelayUs<u16>>(&self, delay: &mut D) -> Result<Packet, TsicError> {
+    fn read_packet<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Packet, TsicError> {
         self.wait_until_low()?;
 
-        let strobe_len = self.strobe_len(delay)?.as_micros() as u16;
+        let strobe_len = self.strobe_len(delay)?.as_micros() as u8;
 
         let mut packet_bits: u16 = 0;
 
@@ -220,13 +220,13 @@ impl<I: InputPin, O: OutputPin> Tsic<I, O> {
     /// read attempt.
     ///
     /// The strobe length should be around 60 microseconds.
-    fn strobe_len<D: DelayUs<u16>>(&self, delay: &mut D) -> Result<Duration, TsicError> {
+    fn strobe_len<D: DelayUs<u8>>(&self, delay: &mut D) -> Result<Duration, TsicError> {
         let sampling_rate = STROBE_SAMPLING_RATE.as_micros();
 
         let mut strobe_len = 0;
         while self.is_low()? {
             strobe_len += sampling_rate;
-            delay.delay_us(sampling_rate as u16);
+            delay.delay_us(sampling_rate as u8);
         }
 
         Ok(Duration::from_micros(strobe_len as u64))

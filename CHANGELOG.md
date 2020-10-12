@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+ - Reduce the initial VDD delay down to `50µs`, because at higher temperatures it looks
+   like the initial delay reduces on the sensor quite a bit.
+
 ## v0.2.0 - 2020-10-12
 
 ### Added
