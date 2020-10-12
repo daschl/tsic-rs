@@ -31,6 +31,10 @@ In order to run this driver, your actual board needs to provide implementation f
 - [DelayUs]
 - [InputPin]
 
+Also, if you want it to manage your VDD as well (recommended), then:
+
+- [OutputPin]
+
 ## Code of Conduct
 
 We abide by the [Contributor Covenant][cc] and ask that you do as well.
@@ -60,4 +64,5 @@ at your option.
 [docs-link]: https://docs.rs/tsic/
 [DelayUs]: https://docs.rs/embedded-hal/0.2.4/embedded_hal/blocking/delay/trait.DelayUs.html
 [InputPin]: https://docs.rs/embedded-hal/0.2.4/embedded_hal/digital/v2/trait.InputPin.html
+[OutputPin]: https://docs.rs/embedded-hal/0.2.4/embedded_hal/digital/v2/trait.OutputPin.html
 [nrf-hal]: https://github.com/nrf-rs/nrf-hal
