@@ -232,7 +232,11 @@ impl<I: InputPin, O: OutputPin> Tsic<I, O> {
             delay.delay_us(sampling_rate as u8);
         }
 
-        Ok(Duration::from_micros(strobe_len as u64))
+        if strobe_len > 0 {
+            Ok(Duration::from_micros(strobe_len as u64))
+        } else {
+            Err(TsicError::StrobeLengthInvalid)
+        }
     }
 
     /// Checks if the pin is currently in a high state.
@@ -285,6 +289,13 @@ pub enum TsicError {
         /// The (wrong) raw measured temperature.
         measured: u16,
     },
+
+    /// The strobe length decoded is invalid.
+    ///
+    /// This could be for example if the strobe length is zero. In
+    /// this case it could be a misreading and it is recommended
+    /// to try again if the time budget allows for it.
+    StrobeLengthInvalid,
 }
 
 /// Represents a single temperature reading from the TSIC 306 sensor.

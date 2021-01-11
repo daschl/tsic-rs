@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
- - Added experimental support for TSIC 206, TSIC 316, TSIC 506, 516
+ - Make sure that if a strobe length of 0 is decoded, an error is raised instead of
+   trying to work with an invalid strobe length.
+ - Added experimental support for TSIC 206, TSIC 316, TSIC 506, 516.
 
 ## v0.2.1 - 2020-10-12
 
